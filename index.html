@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Three.js lab</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        #tip {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 10%;
+            color: red;
+            background: aliceblue;
+            opacity: 0.5;
+            display: none;
+        }
+
+        #loader {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: black;
+            animation: anime infinite 2s linear;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: xx-large;
+        }
+
+        @keyframes anime {
+            0% {
+                color: white;
+            }
+            33% {
+                color: green;
+            }
+            66% {
+                color: white;
+            }
+            100% {
+                color: red;
+            }
+        }
+    </style>
+</head>
+<body>
+<span id="tip">Double click to toggle lights</span>
+<div id="loader">Loading...</div>
+<script src="js/three.js"></script>
+<script src="js/GLTFLoader.js"></script>
+<script src="js/OrbitControls.js"></script>
+<script>
+
+  init();
+
+  function init() {
+    const camera = getCamera();
+
+    const scene = getScene();
+
+    const sunHemiLight = getSunHemiLight();
+    scene.add(sunHemiLight);
+
+    const sunDirLight = getSunDirLight();
+    scene.add(sunDirLight);
+
+    const sun = getSun();
+    scene.add(sun);
+
+    // scene.add(new THREE.CameraHelper(sunDirLight.shadow.camera));
+
+    const ground = getGround();
+    scene.add(ground);
+
+    const moonHemiLight = getMoonHemiLight();
+    scene.add(moonHemiLight);
+
+    const moonDirLight = getMoonDirLight();
+    scene.add(moonDirLight);
+
+    const moon = getMoon();
+    scene.add(moon);
+
+    const houseLight = getHouseLight();
+    scene.add(houseLight);
+
+    // scene.add(new THREE.CameraHelper(moonDirLight.shadow.camera));
+
+    const renderer = getRenderer();
+    document.body.appendChild(renderer.domElement);
+
+    const particles = getParticles();
+    scene.add(particles);
+
+    document.addEventListener('dblclick', function () {
+      if (houseLight.intensity === 0) {
+        houseLight.intensity = 1;
+      } else {
+        houseLight.intensity = 0;
+      }
+    });
+
+    loadModelsAndStartRender(scene, render);
+
+    var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+    function render() {
+      requestAnimationFrame(render);
+
+      animateSunAndMoon();
+      runSnow(particles);
+
+      renderer.render(scene, camera);
+    }
+
+    function animateSunAndMoon() {
+      let sunCoords = getSunCoords();
+      sunDirLight.position.set(sunCoords.x, sunCoords.y, sunCoords.z);
+      sunHemiLight.position.set(sunCoords.x, sunCoords.y, sunCoords.z);
+      sun.position.set(sunCoords.x, sunCoords.y, sunCoords.z);
+      moonDirLight.position.set(sunCoords.z, -sunCoords.y, sunCoords.x);
+      moonHemiLight.position.set(sunCoords.z, -sunCoords.y, sunCoords.x);
+      moon.position.set(sunCoords.z, -sunCoords.y, sunCoords.x);
+    }
+  }
+
+  function getCamera() {
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+    camera.position.set(50, 500, 500);
+    camera.lookAt(0, 0, 0);
+    return camera;
+  }
+
+  function getScene() {
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xa0a0a0);
+    // scene.fog = new THREE.Fog(0xa0a0a0, 2000, 2000);
+    return scene;
+  }
+
+  function getSunHemiLight() {
+    const sunHemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.1);
+    sunHemiLight.position.set(0, 500, 500);
+    return sunHemiLight;
+  }
+
+  function getSunDirLight() {
+    const sunDirLight = new THREE.DirectionalLight(0xffffff);
+    sunDirLight.position.set(0, 500, 500);
+    sunDirLight.castShadow = true;
+    sunDirLight.shadow.camera.top = 500;
+    sunDirLight.shadow.camera.bottom = -500;
+    sunDirLight.shadow.camera.left = -500;
+    sunDirLight.shadow.camera.right = 500;
+    sunDirLight.shadow.camera.near = 0.1;
+    sunDirLight.shadow.camera.far = 8000;
+    return sunDirLight;
+  }
+
+  function getMoonHemiLight() {
+    const moonHemiLight = new THREE.HemisphereLight(0x4F6988, 0x444444, 0.1);
+    moonHemiLight.position.set(0, -500, 500);
+    return moonHemiLight;
+  }
+
+  function getMoonDirLight() {
+    const moonDirLight = new THREE.DirectionalLight(0x4F6988, 0.2);
+    moonDirLight.position.set(0, -500, 500);
+    moonDirLight.castShadow = true;
+    moonDirLight.shadow.camera.top = 500;
+    moonDirLight.shadow.camera.bottom = -500;
+    moonDirLight.shadow.camera.left = -500;
+    moonDirLight.shadow.camera.right = 500;
+    moonDirLight.shadow.camera.near = 0.1;
+    moonDirLight.shadow.camera.far = 8000;
+    return moonDirLight;
+  }
+
+  function getHouseLight() {
+    const houseLight = new THREE.PointLight(0xaaaa00, 0, 1000);
+    houseLight.position.set(250, 40, 100);
+    return houseLight;
+  }
+
+  function getGround() {
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load('textures/snow_ground2.jpg');
+    const material = new THREE.MeshLambertMaterial({
+      map: texture,
+    });
+    const ground = new THREE.Mesh(new THREE.PlaneBufferGeometry(2000, 2000), material);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(0, -22.7, 0);
+    ground.receiveShadow = true;
+    return ground;
+  }
+
+  function loadModelsAndStartRender(scene, render) {
+    const treePositions = [
+      new THREE.Vector3(0, -22.7, 0),
+      new THREE.Vector3(0, -22.7, 220),
+      new THREE.Vector3(120, -22.7, 250),
+      new THREE.Vector3(320, -22.7, 270),
+      new THREE.Vector3(180, -22.7, 350),
+      new THREE.Vector3(400, -22.7, 0),
+      new THREE.Vector3(230, -22.7, 250),
+    ]
+
+    const loader = new THREE.GLTFLoader();
+    loader.load('models/fur_tree/scene.gltf', function (gltf) {
+
+      let model = gltf.scene;
+
+      addMesh('pPlane145_Branch_0');
+      addMesh('pPlane145_lambert5_0');
+
+      loadHouse(scene, render);
+
+      function addMesh(meshName) {
+        const _mesh = model.getObjectByName(meshName);
+        const meshGeometry = new THREE.InstancedBufferGeometry();
+        THREE.BufferGeometry.prototype.copy.call(meshGeometry, _mesh.geometry);
+        const mesh = new THREE.InstancedMesh(meshGeometry, _mesh.material, treePositions.length);
+        mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        const dummy = new THREE.Object3D();
+        for (let i = 0; i < treePositions.length; ++i) {
+          dummy.position.set(treePositions[i].x, treePositions[i].y, treePositions[i].z)
+          dummy.updateMatrix();
+          mesh.setMatrixAt(i, dummy.matrix);
+        }
+        mesh.traverse(function (object) {
+          if (!object.isMesh)
+            return;
+          object.castShadow = true;
+          object.receiveShadow = true;
+        });
+        scene.add(mesh);
+      }
+
+    });
+  }
+
+  function loadHouse(scene, render) {
+
+    const loader = new THREE.GLTFLoader();
+    loader.load('models/house/scene.gltf', function (gltf) {
+
+      const model = gltf.scene;
+      model.position.set(200, -23, 0);
+      model.scale.set(.05, .05, .05);
+      scene.add(model);
+
+      model.traverse(function (object) {
+        if (!object.isMesh)
+          return;
+        object.castShadow = true;
+        object.receiveShadow = true;
+      });
+
+      document.getElementById("tip").style = "display: block";
+      document.getElementById("loader").remove();
+
+      render();
+
+    });
+  }
+
+  function getRenderer() {
+    const renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.shadowMap.enabled = true;
+    return renderer;
+  }
+
+  function getSunCoords() {
+    if (typeof getSunCoords.angle === 'undefined') {
+      getSunCoords.clock = new THREE.Clock();
+      getSunCoords.angle = 0;
+      getSunCoords.angularSpeed = THREE.Math.degToRad(5);
+      getSunCoords.delta = 0;
+      getSunCoords.radius = 5000;
+      getSunCoords.direction = 1;
+    }
+    const delta = getSunCoords.clock.getDelta();
+    getSunCoords.angle += getSunCoords.angularSpeed * delta;
+    return {
+      x: 0,
+      y: Math.cos(getSunCoords.angle) * getSunCoords.radius,
+      z: Math.sin(getSunCoords.angle) * getSunCoords.radius
+    };
+  }
+
+  function getSun() {
+    const geometry = new THREE.SphereGeometry(50, 32, 32);
+
+    const textureLoader = new THREE.TextureLoader();
+    const material = new THREE.MeshBasicMaterial({
+      map: textureLoader.load('textures/sun.png'),
+    });
+
+    return new THREE.Mesh(geometry, material);
+  }
+
+  function getMoon() {
+    const geometry = new THREE.SphereGeometry(40, 32, 32);
+    const textureLoader = new THREE.TextureLoader();
+    const material = new THREE.MeshBasicMaterial({
+      map: textureLoader.load('textures/moon.png'),
+    });
+
+    return new THREE.Mesh(geometry, material);
+  }
+
+  function getParticles() {
+    const particleCount = 15000;
+    const loader = new THREE.TextureLoader();
+    const pMaterial = new THREE.PointsMaterial({
+      color: 0xFFFFFF,
+      size: 10,
+      map: loader.load(
+        "textures/snow.png"
+      ),
+      blending: THREE.AdditiveBlending,
+      depthTest: false,
+      transparent: true
+    });
+
+    const particles = new THREE.Geometry;
+    for (let i = 0; i < particleCount; i++) {
+      const pX = Math.random() * 2000 - 1000,
+        pY = Math.random() * 2000 - 1000 + 1000,
+        pZ = Math.random() * 2000 - 1000,
+        particle = new THREE.Vector3(pX, pY, pZ);
+      particle.velocity = {};
+      particle.velocity.y = 0;
+      particles.vertices.push(particle);
+    }
+    return new THREE.Points(particles, pMaterial);
+  }
+
+  function runSnow(particles) {
+    let pCount = particles.geometry.vertices.length;
+    while (--pCount) {
+      const particle = particles.geometry.vertices[pCount];
+      if (particle.y < -30) {
+        particle.y = 1000;
+        particle.velocity.y = 0;
+      }
+      particle.velocity.y -= Math.random() * .02;
+      particle.y += particle.velocity.y;
+    }
+    particles.geometry.verticesNeedUpdate = true;
+  }
+</script>
+</body>
+</html>
