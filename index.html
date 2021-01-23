@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Three.js lab</title>
+    <title>P3401 Чистоходов</title>
     <style>
         body {
             margin: 0;
@@ -65,40 +65,26 @@
 
   function init() {
     const camera = getCamera();
-
     const scene = getScene();
 
-    const sunHemiLight = getSunHemiLight();
+    const sunHemiLight = getSunHemisphereLight();
     scene.add(sunHemiLight);
-
-    const sunDirLight = getSunDirLight();
+    const sunDirLight = getSunDirectLight();
     scene.add(sunDirLight);
-
     const sun = getSun();
     scene.add(sun);
-
-    // scene.add(new THREE.CameraHelper(sunDirLight.shadow.camera));
-
     const ground = getGround();
     scene.add(ground);
-
-    const moonHemiLight = getMoonHemiLight();
+    const moonHemiLight = getMoonHemisphereLight();
     scene.add(moonHemiLight);
-
-    const moonDirLight = getMoonDirLight();
+    const moonDirLight = getMoonDirectLight();
     scene.add(moonDirLight);
-
     const moon = getMoon();
     scene.add(moon);
-
     const houseLight = getHouseLight();
     scene.add(houseLight);
-
-    // scene.add(new THREE.CameraHelper(moonDirLight.shadow.camera));
-
     const renderer = getRenderer();
     document.body.appendChild(renderer.domElement);
-
     const particles = getParticles();
     scene.add(particles);
 
@@ -112,7 +98,7 @@
 
     loadModelsAndStartRender(scene, render);
 
-    var controls = new THREE.OrbitControls(camera, renderer.domElement);
+    new THREE.OrbitControls(camera, renderer.domElement);
 
     function render() {
       requestAnimationFrame(render);
@@ -136,7 +122,7 @@
 
   function getCamera() {
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
-    camera.position.set(50, 500, 500);
+    camera.position.set(50, 1300, 1300);
     camera.lookAt(0, 0, 0);
     return camera;
   }
@@ -144,17 +130,20 @@
   function getScene() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xa0a0a0);
-    // scene.fog = new THREE.Fog(0xa0a0a0, 2000, 2000);
     return scene;
   }
 
-  function getSunHemiLight() {
+  // https://threejs.org/docs/#api/en/lights/HemisphereLight
+  // Свет, установленный над сценой. Устанавливается градиент: цвет неба, цвет земли, силы света
+  function getSunHemisphereLight() {
     const sunHemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.1);
     sunHemiLight.position.set(0, 500, 500);
     return sunHemiLight;
   }
 
-  function getSunDirLight() {
+  // https://threejs.org/docs/#api/en/lights/DirectionalLight
+  // устанавливаем свет от солнца как от бесконечно удаленного объекта, чтобы симулировать его более реалистично
+  function getSunDirectLight() {
     const sunDirLight = new THREE.DirectionalLight(0xffffff);
     sunDirLight.position.set(0, 500, 500);
     sunDirLight.castShadow = true;
@@ -167,13 +156,13 @@
     return sunDirLight;
   }
 
-  function getMoonHemiLight() {
+  function getMoonHemisphereLight() {
     const moonHemiLight = new THREE.HemisphereLight(0x4F6988, 0x444444, 0.1);
     moonHemiLight.position.set(0, -500, 500);
     return moonHemiLight;
   }
 
-  function getMoonDirLight() {
+  function getMoonDirectLight() {
     const moonDirLight = new THREE.DirectionalLight(0x4F6988, 0.2);
     moonDirLight.position.set(0, -500, 500);
     moonDirLight.castShadow = true;
@@ -186,6 +175,7 @@
     return moonDirLight;
   }
 
+  // свет из точки во всех направлениях
   function getHouseLight() {
     const houseLight = new THREE.PointLight(0xaaaa00, 0, 1000);
     houseLight.position.set(250, 40, 100);
@@ -194,7 +184,8 @@
 
   function getGround() {
     const textureLoader = new THREE.TextureLoader();
-    const texture = textureLoader.load('textures/snow_ground2.jpg');
+    const texture = textureLoader.load('textures/snowy_ground.jpg');
+    // lambert = non-shiny surface
     const material = new THREE.MeshLambertMaterial({
       map: texture,
     });
@@ -210,10 +201,15 @@
       new THREE.Vector3(0, -22.7, 0),
       new THREE.Vector3(0, -22.7, 220),
       new THREE.Vector3(120, -22.7, 250),
+      new THREE.Vector3(220, -22.7, 450),
       new THREE.Vector3(320, -22.7, 270),
       new THREE.Vector3(180, -22.7, 350),
       new THREE.Vector3(400, -22.7, 0),
+      new THREE.Vector3(400, -22.7, 100),
+      new THREE.Vector3(400, -22.7, 200),
+      new THREE.Vector3(400, -22.7, 350),
       new THREE.Vector3(230, -22.7, 250),
+      new THREE.Vector3(330, -22.7, 450),
     ]
 
     const loader = new THREE.GLTFLoader();
@@ -251,7 +247,6 @@
   }
 
   function loadHouse(scene, render) {
-
     const loader = new THREE.GLTFLoader();
     loader.load('models/house/scene.gltf', function (gltf) {
 
@@ -285,10 +280,10 @@
   }
 
   function getSunCoords() {
-    if (typeof getSunCoords.angle === 'undefined') {
+    if (typeof getSunCoords.angle === 'undefined') { // if angle isn't defined yet
       getSunCoords.clock = new THREE.Clock();
       getSunCoords.angle = 0;
-      getSunCoords.angularSpeed = THREE.Math.degToRad(5);
+      getSunCoords.angularSpeed = THREE.Math.degToRad(5); // угловая скорость
       getSunCoords.delta = 0;
       getSunCoords.radius = 5000;
       getSunCoords.direction = 1;
@@ -310,7 +305,7 @@
       map: textureLoader.load('textures/sun.png'),
     });
 
-    return new THREE.Mesh(geometry, material);
+    return new THREE.Mesh(geometry, material); // натягиваем сову (солнце) на сферу
   }
 
   function getMoon() {
@@ -352,6 +347,7 @@
 
   function runSnow(particles) {
     let pCount = particles.geometry.vertices.length;
+
     while (--pCount) {
       const particle = particles.geometry.vertices[pCount];
       if (particle.y < -30) {
@@ -361,6 +357,7 @@
       particle.velocity.y -= Math.random() * .02;
       particle.y += particle.velocity.y;
     }
+
     particles.geometry.verticesNeedUpdate = true;
   }
 </script>
